@@ -1,0 +1,209 @@
+---
+title: "UNESCO heritage"
+author: "Matteo Palomba"
+output: html_notebook
+
+---
+<br>
+<h1>Introduzione</h1> <br>
+
+UNESCO è un’acronimo e sta per “United Nations Educational, Scientific and Cultural Organization".
+In base alla Convenzione l’UNESCO ha fino ad oggi riconosciuto un totale di 1121 siti (869 siti culturali, 213 naturali e 39 misti) presenti in 167 Paesi del mondo.
+
+Ciò che ha reso l’UNESCO famosa in tutto il mondo è sicuramente la “World Heritage List”, ovvero la “Lista del Patrimonio Mondiale”. La lista è molto importante perché comprende tutte opere frutto dell’ingegno umano o della natura, la cui conoscenza e salvaguardia è ritenuta fondamentale per tutta l’Umanità.
+
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(devtools)
+```
+
+```{r}
+Puliz1 <- whc_sites_2019 %>%
+  select(name_en, date_inscribed, longitude, latitude, category, states_name_en, date_inscribed)
+
+colnames(Elenco_codici_e_denominazioni_al_31_12_2018)[8] <- "states_name_en"
+
+Puliz2 <- Elenco_codici_e_denominazioni_al_31_12_2018 %>%
+  inner_join(Puliz1,
+             by = "states_name_en") %>%
+  select(`Denominazione Continente (IT)`, `Denominazione Area (IT)`, states_name_en, name_en, date_inscribed, longitude, latitude, category)
+
+colnames(Elenco_codici_e_denominazioni_al_31_12_2018)[8] <- "states_name_en"
+colnames(Puliz2)[1] <- "Continent"
+colnames(Puliz2)[2] <- "Area"
+colnames(Puliz2)[3] <- "States"
+
+
+```
+<h1>Categorie</h1> <br>
+
+La Convenzione sulla Protezione del Patrimonio Mondiale culturale e naturale, adottata dall’UNESCO nel 1972, prevede che i beni candidati possano essere iscritti nella Lista del Patrimonio Mondiale come:
+
+- patrimonio culturale:
+
+-monumenti: opere architettoniche, plastiche o pittoriche monumentali, elementi o strutture di carattere archeologico, iscrizioni, grotte e gruppi di elementi di valore universale eccezionale dall’aspetto storico, artistico o scientifico <br>
+-agglomerati: gruppi di costruzioni isolate o riunite che, per la loro architettura, unità o integrazione nel paesaggio hanno valore universale eccezionale dall’aspetto storico, artistico o scientifico <br>
+-siti: opere dell’uomo o opere coniugate dell’uomo e della natura, come anche le zone, compresi i siti archeologici, di valore universale eccezionale dall’aspetto storico ed estetico, etnologico o antropologico.
+ 
+
+- patrimonio naturale:
+
+-i monumenti naturali costituiti da formazioni fisiche e biologiche o da gruppi di tali formazioni di valore universale eccezionale dall’aspetto estetico o scientifico <br>
+-le formazioni geologiche e fisiografiche e le zone strettamente delimitate costituenti l’habitat di specie animali e vegetali minacciate, di valore universale eccezionale dall’aspetto scientifico o conservativo <br>
+-i siti naturali o le zone naturali strettamente delimitate di valore universale eccezionale dall’aspetto scientifico, conservativo o estetico naturale
+
+Le Linee guida operative per l’attuazione della Convenzione definiscono come Patrimonio misto (culturale e naturale) i beni che corrispondono in parte o in tutto a entrambe le definizioni di patrimonio culturale e naturale.
+
+```{r}
+### Histogram by continent
+ggplot ( data = Puliz2 ) + 
+  geom_bar ( mapping = aes ( x = Continent , fill = category))+
+  scale_fill_manual("legend", values = c("Cultural" = "sienna", "Mixed" = "blue", "Natural" = "lightgreen")) +
+  labs(x="Stati", 
+       y="numero siti",
+       title = "conteggio siti per continente")
+```
+
+```{r}
+### Histogram by States, CulturalStates
+
+Puliz2 %>% 
+  group_by(States) %>% 
+  count() %>%
+  filter(n > 26)%>%
+  ggplot(aes(x = reorder(States, -n),
+             y = n,
+             fill = States)) + 
+  geom_col()+
+  theme(legend.position = "none")+
+  labs(x="States", 
+       y="number", 
+       title = "Conteggio siti per stato")
+
+Puliz2 %>% 
+  group_by(States, category) %>% 
+  count() %>%
+  filter(n > 26)%>%
+  ggplot(aes(x = reorder(States, -n),
+             y = n,
+             fill = category)) +
+  scale_fill_manual("legend", values = c("Cultural" = "Sienna"))+
+  geom_col()+
+  labs(x="Stati", 
+       y="numero", 
+       title = "Siti culturali per stato")
+```
+
+<h1> Tabbella lavoratori </h1>
+
+```{r}
+  new_cult_sex <- cult_emp_sex[c(57:91),]
+
+colnames(new_cult_sex)[1] <- "States"
+colnames(new_cult_sex)[2] <- "2011"
+colnames(new_cult_sex)[3] <- "2012"
+colnames(new_cult_sex)[4] <- "2013"
+colnames(new_cult_sex)[5] <- "2014"
+colnames(new_cult_sex)[6] <- "2015"
+colnames(new_cult_sex)[7] <- "2016"
+colnames(new_cult_sex)[8] <- "2017"
+colnames(new_cult_sex)[9] <- "2018"
+
+
+Tabellafinale <-new_cult_sex %>%
+  select(States, `2018`)
+
+Tabellafinale <-Tabellafinale[c(9:10, 5, 12, 28),]
+
+Tabellafinale%>%
+  separate(`2018`, into = c("% per popolazione"), sep = 3)
+
+
+```
+
+<h1>Distribuzione</h1>
+
+
+
+```{r}
+library(leaflet)
+
+mappa <- leaflet(Puliz1) %>%
+  addTiles() %>%
+  addCircleMarkers(~longitude, ~latitude, popup = Puliz1$name_en,
+    radius = (3),
+    color = ~ifelse(category == "Cultural", "sienna", ifelse(category == "Mixed", "blue", "green")),
+    stroke = FALSE, fillOpacity = 0.8)
+mappa  
+```
+
+<h1>Iscrizioni</h1>
+
+Poiché ciò che rende eccezionale il concetto di Patrimonio Mondiale è la sua applicazione universale e i beni che lo costituiscono appartengono a tutte le popolazioni del mondo, al di là dei territori nei quali esse sono collocati, per essere inseriti nella Lista i siti devono essere di eccezionale valore universale e rispondere ad almeno uno dei 10 criteri previsti nelle LInee Guida Operative :
+
+
+i) Rappresentare un capolavoro del genio creativo dell’uomo.
+
+(ii) Mostrare un importante interscambio di valori umani in un lungo arco temporale o all’interno di un’area culturale del mondo, sugli sviluppi dell’architettura, nella tecnologia, nelle arti monumentali, nella pianificazione urbana e nel disegno del paesaggio.
+
+(iii) Essere testimonianza unica o eccezionale di una tradizione culturale o di una civiltà vivente o scomparsa
+
+(iv) Costituire un esempio straordinario di una tipologia edilizia, di un insieme architettonico o tecnologico o di un paesaggio che illustri uno o più importanti fasi nella storia umana.
+
+(v) Essere un esempio eccezionale di un insediamento umano tradizionale, dell’utilizzo di risorse territoriali o marine, rappresentativo di una cultura (o più culture) o dell’interazione dell’uomo con l’ambiente, soprattutto quando lo stesso è divenuto vulnerabile per effetto di trasformazioni irreversibili.
+
+(vi) Essere direttamente o materialmente associati con avvenimenti o tradizioni viventi, idee o credenze, opere artistiche o letterarie dotate di un significato universale eccezionale.
+
+(vii) Presentare fenomeni naturali eccezionali o aree di eccezionale bellezza naturale o importanza estetica.
+
+(viii) Costituire una testimonianza straordinaria dei principali periodi dell’evoluzione della terra, comprese testimonianze di vita, di processi geologici in atto nello sviluppo delle caratteristiche fisiche della superficie terrestre o di caratteristiche geomorfiche o fisiografiche significative.
+
+(ix) Costituire esempi significativi di importanti processi ecologici e biologici in atto nell’evoluzione e nello sviluppo di ecosistemi e di ambienti vegetali e animali terrestri, di acqua dolce, costieri e marini.
+
+(x) Presentare gli habitat naturali più importanti e significativi, adatti per la conservazione in situ della diversità biologica, compresi quelli in cui sopravvivono specie minacciate di eccezionale valore universale dal punto di vista della scienza o della conservazione.
+
+```{r}
+Grafico <-Puliz2 %>%
+  group_by(date_inscribed)%>%
+  count()
+
+Grafico %>%
+  ggplot(aes(x = date_inscribed, y = n)) + 
+  geom_point() +
+  geom_smooth(se = FALSE) +
+  labs(x="data iscrizione", 
+       y="numero")
+```
+
+<h2>Numero iscrizioni 2010-2019</h2>
+```{r}
+Grafico2 <- Puliz2 %>%
+  filter(date_inscribed > 2010) %>%
+  group_by(category)%>%
+  count()
+
+colnames(Grafico2)[1] <- "categoria"
+colnames(Grafico2)[2] <- "numero iscrizioni"
+
+Grafico2
+```
+
+
+<h1>Conclusione</h1>
+
+Il Patrimonio rappresenta l’eredità del passato di cui noi oggi beneficiamo e che trasmettiamo alle generazioni future. Il nostro patrimonio, culturale e naturale, è fonte insostituibile di vita e di ispirazione. Luoghi così unici e diversi quali le selvagge distese del Parco Nazionale di Serengeti in Africa Orientale, le Piramidi d’Egitto, la Grande barriera australiana e le cattedrali barocche dell’America latina costituiscono il nostro Patrimonio Mondiale.
+
+
+
+
+
+
+
+
+
+
+
+
